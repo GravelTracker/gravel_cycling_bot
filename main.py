@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-from sites import VarSetter
+from env import EnvVarSetter
 from scrapers.gravelcyclist import Scraper
 
-VarSetter.set_vars()
-Scraper.scrape()
+EnvVarSetter().set_vars()
+Scraper().scrape()
