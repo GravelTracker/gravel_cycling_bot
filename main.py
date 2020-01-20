@@ -5,3 +5,5 @@ from scrapers.gravelcyclist import Scraper
 
 EnvVarSetter().set_vars()
 Scraper().scrape()
+
+print('Finished!')

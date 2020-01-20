@@ -6,6 +6,7 @@ from pymongo import MongoClient
 
 class Scraper():
   def scrape(self):
+    print('Downloading event details... '),
     response = requests.get(os.environ['GRAVEL_CYCLIST_URL'])
     parser = bs(response.content, "lxml-xml")
 
@@ -15,20 +16,21 @@ class Scraper():
 
     db_client = MongoClient(os.environ['MONGO_CONNECT_URL'])
 
+    print('Parsing data and uploading to MongoDB... '),
     for event in events:
       properties = event.properties
       
       try:
-        updated = properties.dtstamp.find('date-time').text
-        summary = properties.summary.text
-        description = re.sub(clean, '', properties.description.text)
-        start_time = properties.dtstart.find('date-time').text
-        end_time = properties.dtend.find('date-time').text
-        tz = properties.dtstart.parameters.tzid.text
-        contact = properties.contact.text
-        location = properties.location.text
-        url = properties.url.uri.text
-        thumbnail = re.sub(';', '', re.search(url_matcher, properties.find('x-wp-images-url').unknown.text)[0])
+        updated = properties.dtstamp.find('date-time').text.strip()
+        summary = properties.summary.text.strip()
+        description = re.sub(clean, '', properties.description.text.strip())
+        start_time = properties.dtstart.find('date-time').text.strip()
+        end_time = properties.dtend.find('date-time').text.strip()
+        tz = properties.dtstart.parameters.tzid.text.strip()
+        contact = properties.contact.text.strip()
+        location = properties.location.text.strip()
+        url = properties.url.uri.text.strip()
+        thumbnail = re.sub(';', '', re.search(url_matcher, properties.find('x-wp-images-url').unknown.text.strip())[0])
       except Exception:
         pass
 
