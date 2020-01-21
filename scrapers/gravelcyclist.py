@@ -3,6 +3,7 @@
 import requests, os, pdb, re
 from bs4 import BeautifulSoup as bs
 from pymongo import MongoClient
+from datetime import datetime
 
 class Scraper():
   def scrape(self):
@@ -24,13 +25,16 @@ class Scraper():
         updated = properties.dtstamp.find('date-time').text.strip()
         summary = properties.summary.text.strip()
         description = re.sub(clean, '', properties.description.text.strip())
-        start_time = properties.dtstart.find('date-time').text.strip()
-        end_time = properties.dtend.find('date-time').text.strip()
+        start_time_unparsed = properties.dtstart.find('date-time').text.strip()
+        end_time_unparsed = properties.dtend.find('date-time').text.strip()
         tz = properties.dtstart.parameters.tzid.text.strip()
         contact = properties.contact.text.strip()
         location = properties.location.text.strip()
         url = properties.url.uri.text.strip()
         thumbnail = re.sub(';', '', re.search(url_matcher, properties.find('x-wp-images-url').unknown.text.strip())[0])
+
+        start_time = datetime.strptime(start_time_unparsed,"%Y-%m-%dT%H:%M:%S")
+        end_time = datetime.strptime(end_time_unparsed,"%Y-%m-%dT%H:%M:%S")
       except Exception:
         pass
 
