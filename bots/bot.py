@@ -76,9 +76,9 @@ class GravelCyclingBot():
     text   =  self.build_text(events)
     text   += self.bot_message()
 
-    self.subreddit.submit(title=title,
-                          selftext=text,
-                          send_replies=False)
+    return self.subreddit.submit(title=title,
+                                 selftext=text,
+                                 send_replies=False)
 
   def bot_message(self):
     spaces  = '\n\n&nbsp;\n\n&nbsp;\n\n'
@@ -88,5 +88,26 @@ class GravelCyclingBot():
 
     return spaces + message
 
+  def get_bottom_sticky(self):
+    try:
+      return self.subreddit.sticky(2)
+    except:
+      return None
+
+  def unsticky(self, post):
+    self.reddit_instance.submission(id=post.id).mod.sticky(state=False)
+
+  def sticky(self, post):
+    self.reddit_instance.submission(id=post.id).mod.sticky(state=True, bottom=True)
+
+  def update_monthly_post(self):
+    sticky2_id = self.get_bottom_sticky()
+    post = self.create_monthly_post()
+    
+    if (sticky2_id != None):
+      self.unsticky(sticky2_id)
+
+    self.sticky(post)
+    
 gcb = GravelCyclingBot()
-gcb.create_monthly_post()
+gcb.update_monthly_post()
