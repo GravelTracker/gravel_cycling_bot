@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import os, pdb, praw, re, sys
 sys.path.append('../')
