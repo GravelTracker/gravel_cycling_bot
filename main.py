@@ -1,9 +1,17 @@
 #!/usr/bin/env python
 
+import traceback
 from env import EnvVarSetter
-from scrapers.gravelcyclist import Scraper
+from bots.bot import GravelCyclingBot
 
-EnvVarSetter().set_vars()
-Scraper().scrape()
+gcb = GravelCyclingBot()
 
-print('Finished!')
+if __name__ == '__main__':
+  while True:
+    try:
+      gcb.run()
+    except KeyboardInterrupt:
+      break
+    except Exception:
+      traceback.print_exc()
+      break

@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
-import requests, os, pdb, re
+import requests, os, pdb, re, sys
 from bs4 import BeautifulSoup as bs
+sys.path.append('../')
 from pymongo import MongoClient
 from datetime import datetime
 
@@ -49,6 +50,8 @@ class Scraper():
         "url": url,
         "contact": contact,
         "thumbnail_url": thumbnail,
+        "insertion_type": "scraped",
+        "active": True
       }
 
       db_client.gravel_cycling.events.insert_one(event_object)

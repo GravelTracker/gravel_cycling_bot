@@ -11,13 +11,15 @@ class DbCleaner():
     self.db_client = MongoClient(os.environ['MONGO_CONNECT_URL'])
     self.event_collection = self.db_client.gravel_cycling.events
 
-  def clean_db(self):
-    selection = input('WARNING! This is a destructive operation that cannot be undone. Continue? y/n: ')
+  def prompt_clean_db(self):
+    print('WARNING! This is a destructive operation that cannot be undone.')
+    selection = input('This will delete all scraped event data (records added by users are preserved)! Continue? y/n: ')
     if(selection.lower() != 'y'):
       return 
 
-    print('Wiping Mongo database...')
-    self.event_collection.remove({})
-    print('Finished!')
+    self.wipe_db()
 
-DbCleaner().clean_db()
+  def wipe_db(self):
+    print('Wiping Mongo database...')
+    self.event_collection.remove({'insertion_type': 'scraped'})
+    print('Finished!')

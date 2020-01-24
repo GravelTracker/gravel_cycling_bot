@@ -4,14 +4,21 @@
 import os, pdb, praw, re, sys
 sys.path.append('../')
 from pymongo import MongoClient
+from db_tools.cleaner import DbCleaner
+from scrapers.gravelcyclist import Scraper as GCScraper
 from env import EnvVarSetter
 from datetime import datetime as dt
+from time import sleep
 
 class GravelCyclingBot():
   def __init__(self):
     EnvVarSetter().set_vars()
     self.reddit_instance = self.setup()
     self.subreddit = self.reddit_instance.subreddit(os.environ['REDDIT_SUBREDDIT'])
+    now = dt.now()
+    month = now.month - 1 if now.month > 1 else 12
+    year = now.year if now.month > 1 else now.year - 1
+    self.last_updated = dt(year, month, now.day)
 
   def setup(self):
     reddit = praw.Reddit(client_id=os.environ['REDDIT_CLIENT_ID'],
@@ -23,10 +30,22 @@ class GravelCyclingBot():
     return reddit
 
   def fetch_events(self):
-    db_client = MongoClient(os.environ['MONGO_CONNECT_URL'])
-    events    = db_client.gravel_cycling.events
+    db_client   = MongoClient(os.environ['MONGO_CONNECT_URL'])
+    events      = db_client.gravel_cycling.events
+    today       = dt.today()
+    start_date  = dt(year=today.year, month=today.month, day=1)
+    end_month   = 1 if today.month + 1 == 13 else today.month + 1
+    end_year    = today.year + 1 if end_month == 1 else today.year
+    end_date    = dt(year=end_year, month=end_month, day=1)
+    query       = { 
+                    'start_time': {
+                      '$gte': start_date,
+                      '$lt': end_date 
+                    },
+                    'active': True
+                  }
 
-    return events
+    return events.find(query)
 
   def build_text(self, events):
     na_events     = []
@@ -35,19 +54,9 @@ class GravelCyclingBot():
     events_header = 'Date | Title | Location | Link\n----|-----|-----|----'
     na_matcher    = re.compile('(US)|(USA)|(United States)')
     aus_matcher   = re.compile('(Australia)|(New Zealand)')
-    today         = dt.today()
-    start_date    = dt(year=today.year, month=today.month, day=1)
-    end_month     = 1 if today.month + 1 == 13 else today.month + 1
-    end_year      = today.year + 1 if end_month == 1 else today.year
-    end_date      = dt(year=end_year, month=end_month, day=1)
-    query         = { 
-                      'start_time': {
-                        '$gte': start_date,
-                        '$lt': end_date 
-                      } 
-                    }
+    events        = self.fetch_events()
 
-    for event in events.find(query):
+    for event in events:
       event_dict = [
         event['start_time'].strftime('%m/%d/%Y'),
         event['summary'].split(' – ')[0],
@@ -101,7 +110,8 @@ class GravelCyclingBot():
   def sticky(self, post):
     self.reddit_instance.submission(id=post.id).mod.sticky(state=True, bottom=True)
 
-  def update_monthly_post(self):
+  def post_monthly_post(self):
+    print('Posting to /r/gravelcycling!')
     sticky2_id = self.get_bottom_sticky()
     post = self.create_monthly_post()
     
@@ -109,6 +119,12 @@ class GravelCyclingBot():
       self.unsticky(sticky2_id)
 
     self.sticky(post)
-    
-gcb = GravelCyclingBot()
-gcb.update_monthly_post()
+
+  def run(self):
+    if dt.now().month > self.last_updated.month or (dt.now().month == 1 and self.last_updated.month == 12):
+      self.last_updated = dt.now()
+      DbCleaner().wipe_db()
+      GCScraper().scrape()
+      self.post_monthly_post()
+
+    sleep(1800)
