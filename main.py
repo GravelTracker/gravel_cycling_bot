@@ -11,7 +11,9 @@ if __name__ == '__main__':
     try:
       gcb.run()
     except KeyboardInterrupt:
+      gcb.send_status('offline')
       break
     except Exception:
+      gcb.send_status('error')
       traceback.print_exc()
       break

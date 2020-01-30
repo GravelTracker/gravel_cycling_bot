@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os, pdb, praw, re, sys
+import os, pdb, praw, re, requests, sys
 sys.path.append('../')
 from pymongo import MongoClient
 from db_tools.cleaner import DbCleaner
@@ -120,6 +120,15 @@ class GravelCyclingBot():
 
     self.sticky(post)
 
+  def send_status(self, status_code):
+    payload = {
+      'token': os.environ['GRAVEL_TRACKER_API_KEY'],
+      'post_time': str(dt.now()),
+      'status_code': status_code
+    }
+
+    requests.post(os.environ['GRAVEL_TRACKER_APP_URL'], json = payload)
+
   def run(self):
     if dt.now().month > self.last_updated.month or (dt.now().month == 1 and self.last_updated.month == 12):
       self.last_updated = dt.now()
@@ -127,4 +136,18 @@ class GravelCyclingBot():
       GCScraper().scrape()
       self.post_monthly_post()
 
-    sleep(1800)
+    sleep(900)
+    self.send_status('success')
+
+gcb = GravelCyclingBot()
+
+if __name__ == '__main__':
+  while True:
+    try:
+      gcb.run()
+    except KeyboardInterrupt:
+      gcb.send_status('offline')
+      break
+    except Exception:
+      gcb.send_status('error')
+      break
