@@ -7,7 +7,7 @@ from pymongo import MongoClient
 from db_tools.cleaner import DbCleaner
 from scrapers.gravelcyclist import Scraper as GCScraper
 from env import EnvVarSetter
-from datetime import datetime as dt
+from datetime import datetime as dt, timezone
 from time import sleep
 
 class GravelCyclingBot():
@@ -15,10 +15,7 @@ class GravelCyclingBot():
     EnvVarSetter().set_vars()
     self.reddit_instance = self.setup()
     self.subreddit = self.reddit_instance.subreddit(os.environ['REDDIT_SUBREDDIT'])
-    now = dt.now()
-    month = now.month - 1 if now.month > 1 else 12
-    year = now.year if now.month > 1 else now.year - 1
-    self.last_updated = dt(year, month, now.day)
+    self.last_updated = self.get_last_post_date()
 
   def setup(self):
     reddit = praw.Reddit(client_id=os.environ['REDDIT_CLIENT_ID'],
@@ -28,6 +25,11 @@ class GravelCyclingBot():
                          password=os.environ['REDDIT_PASSWORD'])
 
     return reddit
+  
+  def get_last_post_date(self):
+    last_post = self.get_bottom_sticky()
+    last_post_date = self.reddit_instance.submission(id=last_post.id).created_utc if last_post else 0
+    return dt.utcfromtimestamp(last_post_date)
 
   def fetch_events(self):
     db_client   = MongoClient(os.environ['MONGO_CONNECT_URL'])
@@ -81,7 +83,7 @@ class GravelCyclingBot():
     return event_text
 
   def create_monthly_post(self):
-    title  =  'Gravel Events for Month of {}'.format(dt.now().strftime('%B, %Y'))
+    title  =  'Gravel Events for Month of {}'.format(dt.now(timezone.utc).strftime('%B, %Y'))
     events =  self.fetch_events()
     text   =  self.build_text(events)
     text   += self.bot_message()
@@ -119,25 +121,28 @@ class GravelCyclingBot():
       self.unsticky(sticky2_id)
 
     self.sticky(post)
+    print('Finished!')
 
   def send_status(self, status_code):
     payload = {
       'token': os.environ['GRAVEL_TRACKER_API_KEY'],
-      'post_time': str(dt.now()),
+      'post_time': str(dt.now(timezone.utc)),
       'status_code': status_code
     }
 
+    print('Pinging status update -- {}...'.format(status_code))
     requests.post(os.environ['GRAVEL_TRACKER_APP_URL'], json = payload)
+    print('Finished!')
 
   def run(self):
-    if dt.now().month > self.last_updated.month or (dt.now().month == 1 and self.last_updated.month == 12):
-      self.last_updated = dt.now()
+    if dt.now(timezone.utc).month != self.last_updated.month:
+      self.last_updated = dt.now(timezone.utc)
       DbCleaner().wipe_db()
       GCScraper().scrape()
       self.post_monthly_post()
 
-    sleep(900)
     self.send_status('success')
+    sleep(900)
 
 gcb = GravelCyclingBot()
 
