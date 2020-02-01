@@ -50,8 +50,8 @@ class Scraper():
         "thumbnail_url": thumbnail,
         "insertion_type": "scraped",
         "active": True
-      }
+        }
 
-      db_client.gravel_cycling.events.insert_one(event_object)
+        db_client.gravel_cycling.events.insert_one(event_object)
       except Exception:
         pass
