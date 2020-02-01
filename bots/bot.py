@@ -34,7 +34,7 @@ class GravelCyclingBot():
   def fetch_events(self):
     db_client   = MongoClient(os.environ['MONGO_CONNECT_URL'])
     events      = db_client.gravel_cycling.events
-    today       = dt.today()
+    today       = dt.now(timezone.utc)
     start_date  = dt(year=today.year, month=today.month, day=1)
     end_month   = 1 if today.month + 1 == 13 else today.month + 1
     end_year    = today.year + 1 if end_month == 1 else today.year
@@ -135,11 +135,11 @@ class GravelCyclingBot():
     print('Finished!')
 
   def run(self):
-    if dt.now(timezone.utc).month != self.last_updated.month:
-      self.last_updated = dt.now(timezone.utc)
-      DbCleaner().wipe_db()
-      GCScraper().scrape()
-      self.post_monthly_post()
+    # if dt.now(timezone.utc).month != self.last_updated.month:
+    #   self.last_updated = dt.now(timezone.utc)
+    #   DbCleaner().wipe_db()
+    #   GCScraper().scrape()
+    self.post_monthly_post()
 
     self.send_status('success')
     sleep(900)
