@@ -36,10 +36,8 @@ class Scraper():
 
         start_time = datetime.strptime(start_time_unparsed,"%Y-%m-%dT%H:%M:%S")
         end_time = datetime.strptime(end_time_unparsed,"%Y-%m-%dT%H:%M:%S")
-      except Exception:
-        pass
 
-      event_object = {
+        event_object = {
         "updated": updated,
         "summary": summary,
         "description": description,
@@ -55,3 +53,5 @@ class Scraper():
       }
 
       db_client.gravel_cycling.events.insert_one(event_object)
+      except Exception:
+        pass
