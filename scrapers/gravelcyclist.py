@@ -8,7 +8,7 @@ from datetime import datetime
 
 class Scraper():
   def scrape(self):
-    print('Downloading event details... '),
+    print('Downloading event details... ')
     response = requests.get(os.environ['GRAVEL_CYCLIST_URL'])
     parser = bs(response.content, "lxml-xml")
 
@@ -18,7 +18,7 @@ class Scraper():
 
     db_client = MongoClient(os.environ['MONGO_CONNECT_URL'])
 
-    print('Parsing data and uploading to MongoDB... '),
+    print('Parsing data and uploading to MongoDB... ')
     for event in events:
       properties = event.properties
       
