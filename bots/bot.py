@@ -135,11 +135,11 @@ class GravelCyclingBot():
     print('Finished!')
 
   def run(self):
-    # if dt.now(timezone.utc).month != self.last_updated.month:
-    #   self.last_updated = dt.now(timezone.utc)
-    #   DbCleaner().wipe_db()
-    #   GCScraper().scrape()
-    self.post_monthly_post()
+    if dt.now(timezone.utc).month != self.last_updated.month:
+      self.last_updated = dt.now(timezone.utc)
+      DbCleaner().wipe_db()
+      GCScraper().scrape()
+      self.post_monthly_post()
 
     self.send_status('success')
     sleep(900)

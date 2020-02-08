@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import requests, os, pdb, re, sys
+import requests, os, pdb, re, sys, traceback
 from bs4 import BeautifulSoup as bs
 sys.path.append('../')
 from pymongo import MongoClient
@@ -19,6 +19,8 @@ class Scraper():
     db_client = MongoClient(os.environ['MONGO_CONNECT_URL'])
 
     print('Parsing data and uploading to MongoDB... ')
+    success_count = 0
+    error_count = 0
     for event in events:
       properties = event.properties
       
@@ -32,7 +34,7 @@ class Scraper():
         contact = properties.contact.text.strip()
         location = properties.location.text.strip()
         url = properties.url.uri.text.strip()
-        thumbnail = re.sub(';', '', re.search(url_matcher, properties.find('x-wp-images-url').unknown.text.strip())[0])
+        thumbnail = re.sub(';', '', re.search(url_matcher, properties.find('x-wp-images-url').unknown.text.strip()).group())
 
         start_time = datetime.strptime(start_time_unparsed,"%Y-%m-%dT%H:%M:%S")
         end_time = datetime.strptime(end_time_unparsed,"%Y-%m-%dT%H:%M:%S")
@@ -53,5 +55,11 @@ class Scraper():
         }
 
         db_client.gravel_cycling.events.insert_one(event_object)
+        success_count += 1
       except Exception:
+        error_count += 1
+        print('Error in record #{}, see traceback below:'.format(error_count + success_count))
+        traceback.print_exc()
         pass
+      
+    print('Successfully uploaded {} event records with {} errors.'.format(success_count, error_count))
