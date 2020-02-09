@@ -10,8 +10,7 @@ class Scraper():
   def scrape(self):
     print('Downloading Trek bike details... ')
 
-    category_link = self.fetch_bike_category_link()
-    bike_links = self.fetch_bike_links(category_link)
+    bike_links = self.fetch_bike_links()
     bike_details = [ self.fetch_bike_details(link) for link in bike_links ]
 
     print('Finished!')
@@ -23,12 +22,6 @@ class Scraper():
 
     print('Finished!')
 
-  def fetch_bike_category_link(self):
-    response = requests.get(self.url(), headers=self.headers())
-    parser = bs(response.content, 'lxml-html')
-    gravel_bike_link = parser.find('a', id='gravelBikesLink')['href']
-    return self.url() + gravel_bike_link
-
   def url(self):
     return os.environ['TREK_URL']
 
@@ -39,11 +32,18 @@ class Scraper():
 
     return headers
 
-  def fetch_bike_links(self, category_link):
-    response = requests.get(category_link, headers=self.headers())
-    parser = bs(response.content, 'lxml-html')
-    product_tiles = parser.find_all('article', class_='product-tile')
-    links = self.parse_product_tiles(product_tiles)
+  def fetch_bike_links(self):
+    last_body = bs('', 'lxml-html')
+    i = 0
+    links = []
+    while last_body.find('body', 'page-notFound') == None:
+      query = 'bikes/c/B100/?q=%3Arelevance&page={}&pageSize=72'.format(str(i))
+      response = requests.get(self.url() + query, headers=self.headers())
+      parser = bs(response.content, 'lxml-html')
+      product_tiles = parser.find_all('article', class_='product-tile')
+      links.extend(self.parse_product_tiles(product_tiles))
+      last_body = parser
+      i += 1
 
     return links
 
@@ -67,6 +67,7 @@ class Scraper():
 
   def build_bike_details(self, parser, link):
     spec_tables = parser.find_all('table', class_='sprocket__table spec')
+    size_table = parser.find('table', id='sizing-table')
 
     try:
       if self.frameset_or_not_current_year(parser):
@@ -75,7 +76,8 @@ class Scraper():
       bike_details_object = {
         'name': parser.find('h1', class_='buying-zone__title').text,
         'link': link,
-        'model_year': parser.find('span', class_='buying-zone__model-year').text
+        'model_year': parser.find('span', class_='buying-zone__model-year').text,
+        'msrp': self.parse_money(parser.find('span', class_='actual-price').text)
       }
 
       header = ''
@@ -85,7 +87,7 @@ class Scraper():
           continue
 
         for row in table.find_all('tr'):
-          header = header if row.th == None else re.sub(r'\*', '', row.th.text).lower()
+          header = header if row.th == None else self.snake_case(re.sub(r'\*', '', row.th.text))
           raw_spec = row.td.text
           sanitized_spec = self.strip_whitespace(raw_spec)
           spec = self.build_spec_object(sanitized_spec)
@@ -95,6 +97,22 @@ class Scraper():
             bike_details_object[header] = self.build_spec_array(existing_value, spec)
           else:
             bike_details_object[header] = spec
+
+      size_headers = [ self.build_header(header.text) for header in size_table.find_all('th') ]
+      size_body = size_table.find('tbody', class_='sizing-table__body')
+      size_rows = size_body.find_all('tr', class_='sizing-table__body-row')
+
+      rows = []
+      for row in size_rows:
+        row_object = {}
+        for i, data in enumerate(row.find_all('td')):
+          data = data.text
+          header = size_headers[i]
+          row_object[header] = data
+
+        rows.append(row_object)
+          
+      bike_details_object['sizes'] = rows
 
     except Exception:
       traceback.print_exc()
@@ -131,12 +149,6 @@ class Scraper():
 
     return [value, spec]
 
-  def upload_bike(self, bike, db_client):
-    if bike == None:
-      return
-
-    db_client.bicycles.bicycles.insert_one(bike)
-
   def frameset_or_not_current_year(self, parser):
     try:
       model_year = parser.find('span', class_='buying-zone__model-year').text
@@ -146,3 +158,38 @@ class Scraper():
     except Exception:
       traceback.print_exc()
       return True
+      
+  def build_header(self, text):
+    raw_header = self.strip_whitespace(text)
+    dash_matcher = re.compile(r'[A-Z] — ')
+    header = re.sub(dash_matcher, '', raw_header)
+    header = self.snake_case(header)
+
+    if header in self.header_override():
+      header = self.header_override()[header]
+
+    return header
+
+  def header_override(self):
+    overrider = {
+      'frame_size_number': 'frame_size',
+      'saddle_rail_height_minimum_(w/short_mast)': 'minimum_saddle_height',
+      'saddle_rail_height_maximum_(w/tall_mast)': 'maximum_saddle_height'
+    }
+
+    return overrider
+
+  def snake_case(self, text):
+    return '_'.join(text.lower().split(' '))
+
+  def parse_money(self, text):
+    first_value = text.split(' - ')[0]
+    money = float(re.sub(r'[\$\,]', '', first_value))
+
+    return money
+
+  def upload_bike(self, bike, db_client):
+    if bike == None:
+      return
+
+    db_client.bicycles.bicycles.insert_one(bike)
