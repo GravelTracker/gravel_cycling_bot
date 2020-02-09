@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import requests, os, pdb, re, sys
+import requests, os, pdb, re, sys, traceback
 from bs4 import BeautifulSoup as bs
 sys.path.append('../')
 from pymongo import MongoClient
@@ -63,14 +63,19 @@ class Scraper():
     response = requests.get(bike_link, headers=self.headers())
     parser = bs(response.content, 'lxml-html')
     
-    return self.build_bike_details(parser)
+    return self.build_bike_details(parser, bike_link)
 
-  def build_bike_details(self, parser):
+  def build_bike_details(self, parser, link):
     spec_tables = parser.find_all('table', class_='sprocket__table spec')
 
     try:
+      if self.frameset_or_not_current_year(parser):
+        return None
+
       bike_details_object = {
-        'name': parser.find('h1', class_='buying-zone__title').text
+        'name': parser.find('h1', class_='buying-zone__title').text,
+        'link': link,
+        'model_year': parser.find('span', class_='buying-zone__model-year').text
       }
 
       header = ''
@@ -92,6 +97,7 @@ class Scraper():
             bike_details_object[header] = spec
 
     except Exception:
+      traceback.print_exc()
       bike_details_object = None
     
     return bike_details_object
@@ -130,4 +136,13 @@ class Scraper():
       return
 
     db_client.bicycles.bicycles.insert_one(bike)
-    
+
+  def frameset_or_not_current_year(self, parser):
+    try:
+      model_year = parser.find('span', class_='buying-zone__model-year').text
+      model_name = parser.find('h1', class_='buying-zone__title').text
+      
+      return model_year != '2020' or ( 'frameset' in  model_name.lower() )
+    except Exception:
+      traceback.print_exc()
+      return True
