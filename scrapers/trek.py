@@ -12,10 +12,11 @@ class Scraper():
 
     category_link = self.fetch_bike_category_link()
     bike_links = self.fetch_bike_links(category_link)
+    bike_details = [ self.fetch_bike_details(link) for link in bike_links ]
 
+    print('Finished!')
     print('Parsing data and uploading to MongoDB... ')
 
-    bike_details = [ self.fetch_bike_details(link) for link in bike_links ]
     db_client = MongoClient(os.environ['MONGO_CONNECT_URL'])
     for bike in bike_details:
       self.upload_bike(bike, db_client)
@@ -65,19 +66,68 @@ class Scraper():
     return self.build_bike_details(parser)
 
   def build_bike_details(self, parser):
-    spec_tables = parser.find_all('table', class_='sprocket_table spec')
+    spec_tables = parser.find_all('table', class_='sprocket__table spec')
 
     try:
       bike_details_object = {
         'name': parser.find('h1', class_='buying-zone__title').text
       }
+
+      header = ''
+
+      for table in spec_tables:
+        if table.text == None:
+          continue
+
+        for row in table.find_all('tr'):
+          header = header if row.th == None else re.sub(r'\*', '', row.th.text).lower()
+          raw_spec = row.td.text
+          sanitized_spec = self.strip_whitespace(raw_spec)
+          spec = self.build_spec_object(sanitized_spec)
+
+          if header in bike_details_object:
+            existing_value = bike_details_object[header]
+            bike_details_object[header] = self.build_spec_array(existing_value, spec)
+          else:
+            bike_details_object[header] = spec
+
     except Exception:
       bike_details_object = None
     
     return bike_details_object
+
+  def strip_whitespace(self, text):
+    string = [ line.strip() for line in text.split('\n') ]
+
+    return ' '.join(string).strip()
+
+  def build_spec_object(self, spec):
+    size_matcher = re.compile(r'Size:\s([0-98]{2}(,\s)?)+')
+    match_object = re.search(size_matcher, spec)
+
+    if match_object == None:
+      return spec
+
+    match = re.sub('Size: ', '', match_object[0])
+    sizes = [ int(size) for size in match.split(', ') ]
+
+    spec_object = {
+      'sizes': sizes,
+      'details': re.sub(size_matcher, '', spec)
+    }
+
+    return spec_object
+
+  def build_spec_array(self, value, spec):
+    if isinstance(value, list):
+      value.append(spec)
+      return value
+
+    return [value, spec]
 
   def upload_bike(self, bike, db_client):
     if bike == None:
       return
 
     db_client.bicycles.bicycles.insert_one(bike)
+    
