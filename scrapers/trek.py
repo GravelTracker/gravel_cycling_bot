@@ -66,7 +66,18 @@ class Scraper():
     return self.build_bike_details(parser, bike_link)
 
   def build_bike_details(self, parser, link):
-    spec_tables = parser.find_all('table', class_='sprocket__table spec')
+    sprocket_table = parser.find_all('table', class_='sprocket__table spec')
+    ul_table = parser.find('section', id='trekProductSpecificationsComponent')
+
+    if sprocket_table:
+      spec_tables = sprocket_table
+      build_spec_tables = self.build_new_spec_tables
+    elif ul_table:
+      spec_tables = ul_table
+      build_spec_tables = self.build_old_spec_tables
+    else:
+      return None
+
     size_table = parser.find('table', id='sizing-table')
 
     try:
@@ -77,26 +88,11 @@ class Scraper():
         'name': parser.find('h1', class_='buying-zone__title').text,
         'link': link,
         'model_year': parser.find('span', class_='buying-zone__model-year').text,
-        'msrp': self.parse_money(parser.find('span', class_='actual-price').text)
+        'msrp': self.parse_money(parser.find('span', class_='actual-price').text),
+        'updated_at': datetime.utcnow()
       }
 
-      header = ''
-
-      for table in spec_tables:
-        if table.text == None:
-          continue
-
-        for row in table.find_all('tr'):
-          header = header if row.th == None else self.snake_case(re.sub(r'\*', '', row.th.text))
-          raw_spec = row.td.text
-          sanitized_spec = self.strip_whitespace(raw_spec)
-          spec = self.build_spec_object(sanitized_spec)
-
-          if header in bike_details_object:
-            existing_value = bike_details_object[header]
-            bike_details_object[header] = self.build_spec_array(existing_value, spec)
-          else:
-            bike_details_object[header] = spec
+      bike_details_object = build_spec_tables(bike_details_object, spec_tables)
 
       size_headers = [ self.build_header(header.text) for header in size_table.find_all('th') ]
       size_body = size_table.find('tbody', class_='sizing-table__body')
@@ -193,3 +189,53 @@ class Scraper():
       return
 
     db_client.bicycles.bicycles.insert_one(bike)
+
+  def build_new_spec_tables(self, bike_details_object, spec_tables):
+    for table in spec_tables:
+      if table.text == None:
+        continue
+
+      header = ''
+      for row in table.find_all('tr'):
+        header = header if row.th == None else self.snake_case(re.sub(r'\*', '', row.th.text))
+        raw_spec = row.td.text
+        sanitized_spec = self.strip_whitespace(raw_spec)
+        spec = self.build_spec_object(sanitized_spec)
+
+        if header in bike_details_object:
+          existing_value = bike_details_object[header]
+          bike_details_object[header] = self.build_spec_array(existing_value, spec)
+        else:
+          bike_details_object[header] = spec
+
+    return bike_details_object
+
+  def build_old_spec_tables(self, bike_details_object, spec_tables):
+    rows = spec_tables.find_all('dl', class_='details-list__item')
+    header = ''
+
+    for row in rows:
+      if row.text == None:
+        continue
+
+      row_header = row.find('dt', class_='details-list__title')
+      if row_header == None:
+        header = header 
+      else:
+        raw_header = self.strip_whitespace(row_header.text)
+        header = self.snake_case(re.sub(r'\*', '', raw_header))
+      
+      if header == 'weight' or header == 'weight_limit':
+        continue
+
+      raw_spec = row.find('dd', class_='details-list__definition').text
+      sanitized_spec = self.strip_whitespace(raw_spec)
+      spec = self.build_spec_object(sanitized_spec)
+
+      if header in bike_details_object:
+        existing_value = bike_details_object[header]
+        bike_details_object[header] = self.build_spec_array(existing_value, spec)
+      else:
+        bike_details_object[header] = spec
+
+    return bike_details_object
