@@ -10,7 +10,7 @@ import sys
 sys.path.append('../')
 from pymongo import MongoClient
 from db_tools.cleaner import DbCleaner
-from scrapers.gravelcyclist import Scraper as GCScraper
+from scrapers.gravelcyclist import GCScraper
 from env import EnvVarSetter
 from datetime import datetime as dt, timezone
 from time import sleep

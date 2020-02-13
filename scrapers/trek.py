@@ -12,7 +12,7 @@ from pymongo import MongoClient
 from datetime import datetime
 
 
-class Scraper():
+class TrekScraper():
     def scrape(self):
         print('Downloading Trek bike details... ')
 
@@ -95,8 +95,9 @@ class Scraper():
 
             bike_details_object = {
                 'name': parser.find('h1', class_='buying-zone__title').text,
+                'manufacturer': 'Trek',
                 'link': link,
-                'model_year': parser.find('span', class_='buying-zone__model-year').text,
+                'model_year': int(parser.find('span', class_='buying-zone__model-year').text),
                 'msrp': self.parse_money(parser.find('span', class_='actual-price').text),
                 'updated_at': datetime.utcnow()
             }
@@ -116,7 +117,7 @@ class Scraper():
                 for i, data in enumerate(row.find_all('td')):
                     data = data.text
                     header = size_headers[i]
-                    row_object[header] = data
+                    row_object[header] = self.convert_num(data)
 
                 rows.append(row_object)
 
@@ -255,3 +256,15 @@ class Scraper():
                 bike_details_object[header] = spec
 
         return bike_details_object
+
+    def convert_num(self, data):
+        if re.search(r'\.', data):
+            try:
+                return float(data)
+            except ValueError:
+                return data
+        else:
+            try:
+                return int(data)
+            except ValueError:
+                return data

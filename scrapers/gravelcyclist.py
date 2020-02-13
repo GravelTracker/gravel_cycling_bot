@@ -12,7 +12,7 @@ from pymongo import MongoClient
 from datetime import datetime
 
 
-class Scraper():
+class GCScraper():
     def scrape(self):
         print('Downloading event details... ')
         response = requests.get(os.environ['GRAVEL_CYCLIST_URL'])

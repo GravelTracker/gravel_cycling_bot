@@ -12,9 +12,9 @@ from pymongo import MongoClient
 from datetime import datetime
 
 
-class GiantScraper():
+class LivScraper():
     def scrape(self):
-        print('Downloading Giant bike details... ')
+        print('Downloading Liv bike details... ')
 
         bike_links = self.fetch_bike_links()
         bike_details = [self.fetch_bike_details(link) for link in bike_links]
@@ -29,7 +29,7 @@ class GiantScraper():
         print('Finished!')
 
     def url(self):
-        return os.environ['GIANT_URL']
+        return os.environ['LIV_URL']
 
     def country(self):
         return 'us/'
@@ -91,7 +91,7 @@ class GiantScraper():
 
             bike_details_object = {
                 'name': parser.find('div', id='text').h1.text,
-                'manufacturer': 'Giant',
+                'manufacturer': 'Liv',
                 'link': link,
                 'model_year': int(parser.find('h4', class_='modelyear').text),
                 'msrp': self.parse_money(parser.find('div', class_='price').p.text),
