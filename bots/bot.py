@@ -14,6 +14,7 @@ from scrapers.gravelcyclist import GCScraper
 from env import EnvVarSetter
 from datetime import datetime as dt, timezone
 from time import sleep
+from bots.timer import Timer
 
 
 class GravelCyclingBot():
@@ -93,12 +94,19 @@ class GravelCyclingBot():
         event_text = na_line + eu_line + aus_line
         return event_text
 
-    def create_monthly_post(self):
+    def create_monthly_post(self, update=False):
         title = 'Gravel Events for Month of {}'.format(
             dt.now(timezone.utc).strftime('%B, %Y'))
         events = self.fetch_events()
         text = self.build_text(events)
         text += self.bot_message()
+
+        if update == True:
+            return { 
+                'title': title,
+                'selftext': text,
+                'send_replies': False 
+            } 
 
         return self.subreddit.submit(title=title,
                                      selftext=text,
@@ -147,15 +155,59 @@ class GravelCyclingBot():
         requests.post(os.environ['GRAVEL_TRACKER_APP_URL'], json=payload)
         print('Finished!')
 
+    def check_for_notifications(self):
+        print('Checking for new notifications...')
+        db_client = MongoClient(os.environ['MONGO_CONNECT_URL'])
+        notifications = db_client.gravel_cycling.notifications.find({})
+        if notifications.count() > 0:
+            print('Notification found!')
+
+        print('Finished!')
+
+        return notifications
+
+    def post_needs_update(self, notifications):
+        for notification in notifications:
+            if notification['type'] == 'update_monthly_post':
+                return True
+
+        return False
+
+    def clear_notifications(self):
+        print('Clearing any notifications...')
+        db_client = MongoClient(os.environ['MONGO_CONNECT_URL'])
+        db_client.gravel_cycling.notifications.remove({})
+        print('Finished!')
+
+    def update_monthly_post(self):
+        print('Updating post...')
+        sticky2_id = self.get_bottom_sticky()
+        post_details = self.create_monthly_post(update=True)
+
+        if (sticky2_id == None):
+            return
+
+        self.reddit_instance.submission(id=sticky2_id).edit(post_details['selftext'])
+        print('Finished!')
+
     def run(self):
+        timer = Timer()
+
         if dt.now(timezone.utc).month != self.last_updated.month:
             self.last_updated = dt.now(timezone.utc)
-            DbCleaner().wipe_db()
+            DbCleaner().wipe_event_db()
             GCScraper().scrape()
             self.post_monthly_post()
+        else:
+            notifications = self.check_for_notifications()
+            if self.post_needs_update(notifications):
+                self.update_monthly_post()
 
+        self.clear_notifications()
         self.send_status('success')
-        sleep(900)
+        wait_duration = 900 - timer.duration()
+        print('Sleeping for {} seconds'.format(wait_duration))
+        sleep(wait_duration)
 
 
 gcb = GravelCyclingBot()
