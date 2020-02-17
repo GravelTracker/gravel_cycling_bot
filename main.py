@@ -4,9 +4,8 @@ import traceback
 from env import EnvVarSetter
 from bots.bot import GravelCyclingBot
 
-gcb = GravelCyclingBot()
-
 if __name__ == '__main__':
+    gcb = GravelCyclingBot()
     while True:
         try:
             gcb.run()

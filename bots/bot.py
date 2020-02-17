@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import math
 import os
 import pdb
 import praw
@@ -16,12 +17,11 @@ from datetime import datetime as dt, timezone
 from time import sleep
 from bots.timer import Timer
 
-
 class GravelCyclingBot():
     def __init__(self):
         EnvVarSetter().set_vars()
-        self.reddit_instance = self.setup()
-        self.subreddit = self.reddit_instance.subreddit(
+        self.reddit = self.setup()
+        self.subreddit = self.reddit.subreddit(
             os.environ['REDDIT_SUBREDDIT'])
         self.last_updated = self.get_last_post_date()
 
@@ -36,7 +36,7 @@ class GravelCyclingBot():
 
     def get_last_post_date(self):
         last_post = self.get_bottom_sticky()
-        last_post_date = self.reddit_instance.submission(
+        last_post_date = self.reddit.submission(
             id=last_post.id).created_utc if last_post else 0
         return dt.utcfromtimestamp(last_post_date)
 
@@ -127,10 +127,10 @@ class GravelCyclingBot():
             return None
 
     def unsticky(self, post):
-        self.reddit_instance.submission(id=post.id).mod.sticky(state=False)
+        self.reddit.submission(id=post.id).mod.sticky(state=False)
 
     def sticky(self, post):
-        self.reddit_instance.submission(
+        self.reddit.submission(
             id=post.id).mod.sticky(state=True, bottom=True)
 
     def post_monthly_post(self):
@@ -164,7 +164,7 @@ class GravelCyclingBot():
 
         print('Finished!')
 
-        return notifications
+        return list(notifications)
 
     def post_needs_update(self, notifications):
         for notification in notifications:
@@ -187,8 +187,22 @@ class GravelCyclingBot():
         if (sticky2_id == None):
             return
 
-        self.reddit_instance.submission(id=sticky2_id).edit(post_details['selftext'])
+        self.reddit.submission(id=sticky2_id).edit(post_details['selftext'])
         print('Finished!')
+
+    def comparison_list(self, notifications):
+        post_info_list = []
+        for notification in notifications:
+            if notification['type'] == 'comparison':
+                post_info_list.append(notification)
+
+        return post_info_list
+
+    def post_comparisons(self, posts):
+        for post in posts:
+            print('Replying to {}...'.format(post['author']))
+            self.reddit.comment(id=post['post_id']).reply('Replied!')
+            print('Finished!')
 
     def run(self):
         timer = Timer()
@@ -198,27 +212,17 @@ class GravelCyclingBot():
             DbCleaner().wipe_event_db()
             GCScraper().scrape()
             self.post_monthly_post()
-        else:
-            notifications = self.check_for_notifications()
-            if self.post_needs_update(notifications):
-                self.update_monthly_post()
+
+        notifications = self.check_for_notifications()
+        if self.post_needs_update(notifications):
+            self.update_monthly_post()
+
+        comparisons_needed = self.comparison_list(notifications)
+        if len(comparisons_needed) > 0:
+            self.post_comparisons(comparisons_needed)
 
         self.clear_notifications()
         self.send_status('success')
-        wait_duration = 900 - timer.duration()
+        wait_duration = 900 - math.floor(timer.duration())
         print('Sleeping for {} seconds'.format(wait_duration))
         sleep(wait_duration)
-
-
-gcb = GravelCyclingBot()
-
-if __name__ == '__main__':
-    while True:
-        try:
-            gcb.run()
-        except KeyboardInterrupt:
-            gcb.send_status('offline')
-            break
-        except Exception:
-            gcb.send_status('error')
-            break
