@@ -17,6 +17,7 @@ from datetime import datetime as dt, timezone
 from time import sleep
 from bots.timer import Timer
 
+
 class GravelCyclingBot():
     def __init__(self):
         EnvVarSetter().set_vars()
@@ -102,11 +103,11 @@ class GravelCyclingBot():
         text += self.bot_message()
 
         if update == True:
-            return { 
+            return {
                 'title': title,
                 'selftext': text,
-                'send_replies': False 
-            } 
+                'send_replies': False
+            }
 
         return self.subreddit.submit(title=title,
                                      selftext=text,

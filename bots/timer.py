@@ -2,6 +2,7 @@
 
 from datetime import datetime as dt
 
+
 class Timer():
     def __init__(self):
         self.start_time = dt.now()

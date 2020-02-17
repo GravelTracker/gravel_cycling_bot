@@ -4,6 +4,7 @@ import os
 import pdb
 from pymongo import MongoClient
 
+
 class BikeIndexer():
     def __init__(self):
         self.db_client = MongoClient(os.environ['MONGO_CONNECT_URL'])
@@ -11,7 +12,8 @@ class BikeIndexer():
     def index_bikes_for_search(self):
         print('Deleting old search index...')
 
-        self.db_client.bicycles.bicycles.search.drop_index('search_bike_ngrams')
+        self.db_client.bicycles.bicycles.search.drop_index(
+            'search_bike_ngrams')
 
         print('Finished!')
         print('Building new search index...')
@@ -20,7 +22,7 @@ class BikeIndexer():
 
         for bike in bikes_list:
             self.index_bike_name_for_search(bike)
-        
+
         print('Finished!')
 
     def index_bike_name_for_search(self, bike):

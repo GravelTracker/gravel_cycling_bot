@@ -9,6 +9,7 @@ import traceback
 from pymongo import MongoClient
 from datetime import datetime as dt
 
+
 class ComparisonDaemon():
     def __init__(self):
         self.reddit = self.setup()
@@ -29,8 +30,10 @@ class ComparisonDaemon():
         new_comments = self.subreddit.stream.comments(skip_existing=True)
         for comment in new_comments:
             if '!compare' in comment.body:
+
                 print('New mention! Posting a notification...')
-                try: 
+                
+                try:
                     bike1, bike2 = self.parse_comparison(comment.body)
                     self.db_client.gravel_cycling.notifications.insert_one({
                         'updated_at': dt.now(),
