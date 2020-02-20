@@ -32,7 +32,7 @@ class ComparisonDaemon():
             if '!compare' in comment.body:
 
                 print('New mention! Posting a notification...')
-                
+
                 try:
                     bike1, bike2 = self.parse_comparison(comment.body)
                     self.db_client.gravel_cycling.notifications.insert_one({

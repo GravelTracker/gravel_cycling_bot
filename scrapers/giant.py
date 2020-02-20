@@ -86,6 +86,9 @@ class GiantScraper():
 
     def build_bike_details(self, parser, link):
         try:
+            if self.frameset_or_not_current_year(parser):
+                return None
+
             spec_tables = parser.find_all('table', class_='specifications')
             geometry_table = parser.find('table', class_='geometry')
 
@@ -105,7 +108,8 @@ class GiantScraper():
                     if spec_name == None or spec_value == None:
                         continue
 
-                    bike_details_object[spec_name] = spec_value
+                    bike_details_object[self.snake_case(
+                        spec_name)] = spec_value
 
             try:
                 geo_headers = geometry_table.find(
@@ -178,6 +182,16 @@ class GiantScraper():
             return float(value) / 10
 
         return value
+
+    def frameset_or_not_current_year(self, parser):
+        try:
+            model_year = int(parser.find('h4', class_='modelyear').text)
+            model_name = parser.find('div', id='text').h1.text
+
+            return model_year != 2020 or ('frameset' in model_name.lower())
+        except Exception:
+            traceback.print_exc()
+            return True
 
     def upload_bike(self, bike, db_client):
         if bike == None:
