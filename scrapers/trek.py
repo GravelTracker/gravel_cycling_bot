@@ -134,22 +134,48 @@ class TrekScraper():
 
         return ' '.join(string).strip()
 
-    def build_spec_object(self, spec):
-        size_matcher = re.compile(r'Size:\s([0-98]{2}(,\s)?)+')
-        match_object = re.search(size_matcher, spec)
+    def build_spec_object(self, raw_spec):
+        strings = [self.parse_spec(string) for string in raw_spec.childGenerator() if self.valid_spec(string)]
+        
+        if len(strings) == 2:
+            size_object, spec = strings
+        else:
+            return self.strip_whitespace(raw_spec.text)
 
-        if match_object == None:
-            return spec
-
-        match = re.sub('Size: ', '', match_object[0])
-        sizes = [int(size) for size in match.split(', ')]
+        match = re.sub('Size: ', '', size_object)
+        sizes = [self.parse_size(size) for size in match.split(', ')]
 
         spec_object = {
             'sizes': sizes,
-            'details': re.sub(size_matcher, '', spec)
+            'details': spec
         }
 
         return spec_object
+
+    def parse_spec(self, spec):
+        try:
+            spec = spec.text
+        except Exception:
+            pass
+
+        return self.strip_whitespace(spec)
+    
+    def valid_spec(self, spec):
+        if spec == '\n':
+            return False
+        
+        try:
+            spec = spec.text
+        except Exception:
+            pass
+
+        return isinstance(spec, str) and len(spec) > 0
+
+    def parse_size(self, size):
+        try:
+            return int(size)
+        except Exception:
+            return size
 
     def build_spec_array(self, value, spec):
         if isinstance(value, list):
@@ -213,9 +239,8 @@ class TrekScraper():
             for row in table.find_all('tr'):
                 header = header if row.th == None else self.snake_case(
                     re.sub(r'\*', '', row.th.text))
-                raw_spec = row.td.text
-                sanitized_spec = self.strip_whitespace(raw_spec)
-                spec = self.build_spec_object(sanitized_spec)
+                raw_spec = row.td
+                spec = self.build_spec_object(raw_spec)
 
                 if header in bike_details_object:
                     existing_value = bike_details_object[header]
@@ -244,9 +269,8 @@ class TrekScraper():
             if header == 'weight' or header == 'weight_limit':
                 continue
 
-            raw_spec = row.find('dd', class_='details-list__definition').text
-            sanitized_spec = self.strip_whitespace(raw_spec)
-            spec = self.build_spec_object(sanitized_spec)
+            raw_spec = row.find('dd', class_='details-list__definition')
+            spec = self.build_spec_object(raw_spec)
 
             if header in bike_details_object:
                 existing_value = bike_details_object[header]
