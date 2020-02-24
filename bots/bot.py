@@ -204,8 +204,26 @@ class GravelCyclingBot():
     def post_comparisons(self, posts):
         for post in posts:
             print('Replying to {}...'.format(post['author']))
-            self.reddit.comment(id=post['post_id']).reply('Replied!')
+            payload = self.build_comparison_payload(post)
+            self.reddit.comment(id=post['post_id']).reply(payload)
             print('Finished!')
+
+    def build_comparison_payload(self, post):
+        db_client = MongoClient(os.environ['MONGO_CONNECT_URL'])
+        bike1 = db_client.bicycles.bicycles.find_one({'_id': post['bike_1_id']})
+        bike2 = db_client.bicycles.bicycles.find_one({'_id': post['bike_2_id']})
+        payload = "Hey, {}! Here's the comparison you asked for!\n\n".format(post['author'])
+
+        pdb.set_trace()
+        for bike in [bike1, bike2]:
+            if bike == None:
+                payload += 'A bike was not found.\n\n'
+                continue
+
+            for key in bike.keys():
+                payload += '{}: {}\n\n'.format(key, bike[key])
+
+        return payload
 
     def run(self):
         timer = Timer()
