@@ -16,6 +16,7 @@ from env import EnvVarSetter
 from datetime import datetime as dt, timezone
 from time import sleep
 from bots.timer import Timer
+from bike_scraper import BikeScraper
 
 
 class GravelCyclingBot():
@@ -25,6 +26,7 @@ class GravelCyclingBot():
         self.subreddit = self.reddit.subreddit(
             os.environ['REDDIT_SUBREDDIT'])
         self.last_updated = self.get_last_post_date()
+        self.last_bike_scrape_date = dt.now(timezone.utc)
 
     def setup(self):
         reddit = praw.Reddit(client_id=os.environ['REDDIT_CLIENT_ID'],
@@ -213,6 +215,9 @@ class GravelCyclingBot():
             DbCleaner().wipe_event_db()
             GCScraper().scrape()
             self.post_monthly_post()
+
+        if (dt.now(timezone.utc) - self.last_bike_scrape_date).days > 180:
+            BikeScraper().scrape()
 
         notifications = self.check_for_notifications()
         if self.post_needs_update(notifications):
