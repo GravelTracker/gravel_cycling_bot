@@ -60,7 +60,6 @@ class TrekStandardizer():
                     new_record[field] = value
         except Exception:
             traceback.print_exc()
-            pdb.set_trace()
             return None
 
         return new_record

@@ -12,8 +12,7 @@ class BikeIndexer():
     def index_bikes_for_search(self):
         print('Deleting old search index...')
 
-        self.db_client.bicycles.bicycles.search.drop_index(
-            'search_bike_ngrams')
+        self.db_client.bicycles.bicycles.search.remove({})
 
         print('Finished!')
         print('Building new search index...')
