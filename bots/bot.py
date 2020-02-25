@@ -9,6 +9,7 @@ import praw
 import re
 import requests
 import sys
+import traceback
 sys.path.append('../')
 from pymongo import MongoClient
 from db_tools.cleaner import DbCleaner
@@ -155,8 +156,15 @@ class GravelCyclingBot():
             'status_code': status_code
         }
 
-        print('{}: Pinging status update -- {}...'.format(dt.now(timezone.utc), status_code))
-        requests.post(os.environ['GRAVEL_TRACKER_APP_URL'], json=payload)
+        print(
+            '{}: Pinging status update -- {}...'.format(dt.now(timezone.utc), status_code))
+
+        try:
+            requests.post(os.environ['GRAVEL_TRACKER_APP_URL'], json=payload)
+        except ConnectionError:
+            traceback.print_exc()
+            return
+
         print('Finished!')
 
     def check_for_notifications(self):
