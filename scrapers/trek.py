@@ -135,8 +135,9 @@ class TrekScraper():
         return ' '.join(string).strip()
 
     def build_spec_object(self, raw_spec):
-        strings = [self.parse_spec(string) for string in raw_spec.childGenerator() if self.valid_spec(string)]
-        
+        strings = [self.parse_spec(
+            string) for string in raw_spec.childGenerator() if self.valid_spec(string)]
+
         if len(strings) == 2:
             size_object, spec = strings
         else:
@@ -159,11 +160,11 @@ class TrekScraper():
             pass
 
         return self.strip_whitespace(spec)
-    
+
     def valid_spec(self, spec):
         if spec == '\n':
             return False
-        
+
         try:
             spec = spec.text
         except Exception:

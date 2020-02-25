@@ -10,6 +10,7 @@ from db_tools.cleaner import DbCleaner
 from db_tools.backup import BackupDB
 from standardizer import Standardizer
 
+
 class BikeScraper():
     def scrape(self):
         # DbCleaner().wipe_bicycle_db()
@@ -19,6 +20,7 @@ class BikeScraper():
         # BikeIndexer().index_bikes_for_search()
         # BackupDB()
         Standardizer().standardize_records()
+
 
 if __name__ == '__main__':
     try:

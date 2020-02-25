@@ -211,13 +211,16 @@ class GravelCyclingBot():
 
     def build_comparison_payload(self, post):
         db_client = MongoClient(os.environ['MONGO_CONNECT_URL'])
-        bike1 = db_client.bicycles.bicycles.find_one({'_id': post['bike_1_id']})
-        bike2 = db_client.bicycles.bicycles.find_one({'_id': post['bike_2_id']})
-        payload = "Hey, /u/{}! Here's the comparison you asked for!\n\n".format(post['author'])
+        bike1 = db_client.bicycles.bicycles.find_one(
+            {'_id': post['bike_1_id']})
+        bike2 = db_client.bicycles.bicycles.find_one(
+            {'_id': post['bike_2_id']})
+        payload = "Hey, /u/{}! Here's the comparison you asked for!\n\n".format(
+            post['author'])
 
         payload_rows = []
         for bike in [bike1, bike2]:
-            
+
             if bike == None:
                 continue
 
@@ -228,16 +231,16 @@ class GravelCyclingBot():
                 row = self.search(payload_rows, key)
                 if row == None:
                     payload_rows.append({
-                        key: [ 
-                            bike[key] 
+                        key: [
+                            bike[key]
                         ]
                     })
                 else:
                     row_index = payload_rows.index(row)
                     value_list = copy.deepcopy(payload_rows[row_index][key])
                     value_list.append(bike[key])
-                    payload_rows[row_index] = { key: value_list }
-                    
+                    payload_rows[row_index] = {key: value_list}
+
         payload += self.stringify_payload_rows(payload_rows)
 
         return payload
@@ -259,14 +262,19 @@ class GravelCyclingBot():
                     print(row)
 
                 if key == 'link':
-                    row_values = [self.prettify_link(item) for item in row[key]]
+                    row_values = [self.prettify_link(
+                        item) for item in row[key]]
                 else:
-                    row_values = [self.parse_row_item(item) for item in row[key]]
+                    row_values = [self.parse_row_item(
+                        item) for item in row[key]]
 
                 if key == 'name':
-                    string += 'Specification | ' + ' | '.join(row_values) + "\n" + '|'.join(['-----'] * 3) + "\n"
+                    string += 'Specification | ' + \
+                        ' | '.join(row_values) + "\n" + \
+                        '|'.join(['-----'] * 3) + "\n"
                 else:
-                    string += self.normalize_name(key) + ' | ' + ' | '.join(row_values) + "\n"
+                    string += self.normalize_name(key) + \
+                        ' | ' + ' | '.join(row_values) + "\n"
 
         return string
 
@@ -278,7 +286,7 @@ class GravelCyclingBot():
 
     def parse_row_item(self, item):
         return item[0]['details'] if isinstance(item, list) else str(item)
-        
+
     def run(self):
         timer = Timer()
 

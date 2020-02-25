@@ -56,7 +56,8 @@ class ComparisonDaemon():
                 }
             }
         )
-        sorted_results = search_results.sort([('score', {'$meta': 'textScore'})])
+        sorted_results = search_results.sort(
+            [('score', {'$meta': 'textScore'})])
         bike_details = sorted_results[0]
 
         return None if bike_details == None else bike_details['bike_id']
@@ -85,6 +86,7 @@ class ComparisonDaemon():
                     print('Failed!')
                     traceback.print_exc()
                     continue
+
 
 if __name__ == '__main__':
     e().set_vars()
