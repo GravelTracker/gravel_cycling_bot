@@ -65,4 +65,4 @@ class TrekStandardizer():
         return new_record
 
     def can_be_deleted(self, field):
-        return field in ['bag', 'handlebar_tape']
+        return field in ['bag', 'handlebar_tape', 'headset']

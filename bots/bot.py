@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import copy
 import math
 import os
 import pdb
@@ -212,18 +213,72 @@ class GravelCyclingBot():
         db_client = MongoClient(os.environ['MONGO_CONNECT_URL'])
         bike1 = db_client.bicycles.bicycles.find_one({'_id': post['bike_1_id']})
         bike2 = db_client.bicycles.bicycles.find_one({'_id': post['bike_2_id']})
-        payload = "Hey, {}! Here's the comparison you asked for!\n\n".format(post['author'])
+        payload = "Hey, /u/{}! Here's the comparison you asked for!\n\n".format(post['author'])
 
+        payload_rows = []
         for bike in [bike1, bike2]:
+            
             if bike == None:
-                payload += 'A bike was not found.\n\n'
                 continue
 
             for key in bike.keys():
-                payload += '{}: {}\n\n'.format(key, bike[key])
+                if key in self.ignorable():
+                    continue
+
+                row = self.search(payload_rows, key)
+                if row == None:
+                    payload_rows.append({
+                        key: [ 
+                            bike[key] 
+                        ]
+                    })
+                else:
+                    row_index = payload_rows.index(row)
+                    value_list = copy.deepcopy(payload_rows[row_index][key])
+                    value_list.append(bike[key])
+                    payload_rows[row_index] = { key: value_list }
+                    
+        payload += self.stringify_payload_rows(payload_rows)
 
         return payload
 
+    def search(self, payload, key):
+        items = [item for item in payload if key in item]
+
+        return None if len(items) == 0 else items[0]
+
+    def ignorable(self):
+        return ['sizes', '_id', 'updated_at']
+
+    def stringify_payload_rows(self, payload_rows):
+        print('Any duplicate rows will be printed below...')
+        string = ''
+        for row in payload_rows:
+            for key in row.keys():
+                if len(row[key]) < 2:
+                    print(row)
+
+                if key == 'link':
+                    row_values = [self.prettify_link(item) for item in row[key]]
+                else:
+                    row_values = [self.parse_row_item(item) for item in row[key]]
+
+                if key == 'name':
+                    string += 'Specification | ' + ' | '.join(row_values) + "\n" + '|'.join(['-----'] * 3) + "\n"
+                else:
+                    string += self.normalize_name(key) + ' | ' + ' | '.join(row_values) + "\n"
+
+        return string
+
+    def normalize_name(self, name):
+        return ' '.join([word.capitalize() for word in name.split('_')])
+
+    def prettify_link(self, link):
+        return '[Link]({})'.format(link)
+
+    def parse_row_item(self, item):
+        return item[0]['details'] if isinstance(item, list) else str(item)
+        
     def run(self):
         timer = Timer()
 
@@ -246,6 +301,6 @@ class GravelCyclingBot():
 
         self.clear_notifications()
         self.send_status('success')
-        wait_duration = 900 - math.floor(timer.duration())
+        wait_duration = 10 - math.floor(timer.duration())
         print('Sleeping for {} seconds'.format(wait_duration))
         sleep(wait_duration)

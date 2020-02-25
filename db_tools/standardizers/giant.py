@@ -61,7 +61,7 @@ class GiantStandardizer():
                         new_record['wheels'] = value
                     continue
 
-                if field in ['brakes', 'tires']:
+                if field in ['brakes', 'tires', 'pedals', 'shifters']:
                     new_record[self.singularize(field)] = value
                     continue
 
@@ -85,7 +85,8 @@ class GiantStandardizer():
             'crankset',
             'pedals',
             'brakes',
-            'tires'
+            'tires',
+            'shifters'
         ]
 
     def can_be_deleted(self, field):
