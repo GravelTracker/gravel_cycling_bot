@@ -155,7 +155,7 @@ class GravelCyclingBot():
             'status_code': status_code
         }
 
-        print('Pinging status update -- {}...'.format(status_code))
+        print('{}: Pinging status update -- {}...'.format(dt.now(timezone.utc), status_code))
         requests.post(os.environ['GRAVEL_TRACKER_APP_URL'], json=payload)
         print('Finished!')
 
@@ -309,6 +309,6 @@ class GravelCyclingBot():
 
         self.clear_notifications()
         self.send_status('success')
-        wait_duration = 10 - math.floor(timer.duration())
+        wait_duration = 900 - math.floor(timer.duration())
         print('Sleeping for {} seconds'.format(wait_duration))
         sleep(wait_duration)
