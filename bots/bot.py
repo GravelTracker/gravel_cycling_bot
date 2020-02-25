@@ -214,7 +214,6 @@ class GravelCyclingBot():
         bike2 = db_client.bicycles.bicycles.find_one({'_id': post['bike_2_id']})
         payload = "Hey, {}! Here's the comparison you asked for!\n\n".format(post['author'])
 
-        pdb.set_trace()
         for bike in [bike1, bike2]:
             if bike == None:
                 payload += 'A bike was not found.\n\n'
