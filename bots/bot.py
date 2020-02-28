@@ -65,11 +65,9 @@ class GravelCyclingBot():
 
     def build_text(self, events):
         na_events = []
-        eu_events = []
-        aus_events = []
+        other_events = []
         events_header = 'Date | Title | Location | Link\n----|-----|-----|----'
         na_matcher = re.compile('(US)|(USA)|(United States)')
-        aus_matcher = re.compile('(Australia)|(New Zealand)')
         events = self.fetch_events()
 
         for event in events:
@@ -84,19 +82,15 @@ class GravelCyclingBot():
 
             if (re.search(na_matcher, event['location'])):
                 na_events.append(event_line)
-            elif (re.search(aus_matcher, event['location'])):
-                aus_events.append(event_line)
             else:
-                eu_events.append(event_line)
+                other_events.append(event_line)
 
         na_line = '#North American\n\n%s\n%s\n' % (
             events_header, '\n'.join(na_events))
-        eu_line = '#European\n\n%s\n%s\n' % (
-            events_header, '\n'.join(eu_events))
-        aus_line = '#Australia / New Zealand\n\n%s\n%s\n' % (
-            events_header, '\n'.join(aus_events))
+        other_line = '#Other\n\n%s\n%s\n' % (
+            events_header, '\n'.join(other_events))
 
-        event_text = na_line + eu_line + aus_line
+        event_text = na_line + other_line
         return event_text
 
     def create_monthly_post(self, update=False):

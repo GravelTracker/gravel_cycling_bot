@@ -13,12 +13,12 @@ from standardizer import Standardizer
 
 class BikeScraper():
     def scrape(self):
-        # DbCleaner().wipe_bicycle_db()
-        # GiantScraper().scrape()
-        # LivScraper().scrape()
-        # TrekScraper().scrape()
-        # BikeIndexer().index_bikes_for_search()
-        # BackupDB()
+        DbCleaner().wipe_bicycle_db()
+        GiantScraper().scrape()
+        LivScraper().scrape()
+        TrekScraper().scrape()
+        BikeIndexer().index_bikes_for_search()
+        BackupDB()
         Standardizer().standardize_records()
 
 
