@@ -18,8 +18,6 @@ from env import EnvVarSetter
 from datetime import datetime as dt, timezone
 from time import sleep
 from bots.timer import Timer
-from bike_scraper import BikeScraper
-
 
 class GravelCyclingBot():
     def __init__(self):
@@ -196,99 +194,6 @@ class GravelCyclingBot():
         self.reddit.submission(id=sticky2_id).edit(post_details['selftext'])
         print('Finished!')
 
-    def comparison_list(self, notifications):
-        post_info_list = []
-        for notification in notifications:
-            if notification['type'] == 'comparison':
-                post_info_list.append(notification)
-
-        return post_info_list
-
-    def post_comparisons(self, posts):
-        for post in posts:
-            print('Replying to {}...'.format(post['author']))
-            payload = self.build_comparison_payload(post)
-            self.reddit.comment(id=post['post_id']).reply(payload)
-            print('Finished!')
-
-    def build_comparison_payload(self, post):
-        db_client = MongoClient(os.environ['MONGO_CONNECT_URL'])
-        bike1 = db_client.bicycles.bicycles.find_one(
-            {'_id': post['bike_1_id']})
-        bike2 = db_client.bicycles.bicycles.find_one(
-            {'_id': post['bike_2_id']})
-        payload = "Hey, /u/{}! Here's the comparison you asked for!\n\n".format(
-            post['author'])
-
-        payload_rows = []
-        for bike in [bike1, bike2]:
-
-            if bike == None:
-                continue
-
-            for key in bike.keys():
-                if key in self.ignorable():
-                    continue
-
-                row = self.search(payload_rows, key)
-                if row == None:
-                    payload_rows.append({
-                        key: [
-                            bike[key]
-                        ]
-                    })
-                else:
-                    row_index = payload_rows.index(row)
-                    value_list = copy.deepcopy(payload_rows[row_index][key])
-                    value_list.append(bike[key])
-                    payload_rows[row_index] = {key: value_list}
-
-        payload += self.stringify_payload_rows(payload_rows)
-
-        return payload
-
-    def search(self, payload, key):
-        items = [item for item in payload if key in item]
-
-        return None if len(items) == 0 else items[0]
-
-    def ignorable(self):
-        return ['sizes', '_id', 'updated_at']
-
-    def stringify_payload_rows(self, payload_rows):
-        print('Any duplicate rows will be printed below...')
-        string = ''
-        for row in payload_rows:
-            for key in row.keys():
-                if len(row[key]) < 2:
-                    print(row)
-
-                if key == 'link':
-                    row_values = [self.prettify_link(
-                        item) for item in row[key]]
-                else:
-                    row_values = [self.parse_row_item(
-                        item) for item in row[key]]
-
-                if key == 'name':
-                    string += 'Specification | ' + \
-                        ' | '.join(row_values) + "\n" + \
-                        '|'.join(['-----'] * 3) + "\n"
-                else:
-                    string += self.normalize_name(key) + \
-                        ' | ' + ' | '.join(row_values) + "\n"
-
-        return string
-
-    def normalize_name(self, name):
-        return ' '.join([word.capitalize() for word in name.split('_')])
-
-    def prettify_link(self, link):
-        return '[Link]({})'.format(link)
-
-    def parse_row_item(self, item):
-        return item[0]['details'] if isinstance(item, list) else str(item)
-
     def run(self):
         timer = Timer()
 
@@ -298,16 +203,9 @@ class GravelCyclingBot():
             GCScraper().scrape()
             self.post_monthly_post()
 
-        if (dt.now(timezone.utc) - self.last_bike_scrape_date).days > 180:
-            BikeScraper().scrape()
-
         notifications = self.check_for_notifications()
         if self.post_needs_update(notifications):
             self.update_monthly_post()
-
-        comparisons_needed = self.comparison_list(notifications)
-        if len(comparisons_needed) > 0:
-            self.post_comparisons(comparisons_needed)
 
         self.clear_notifications()
         self.send_status('success')
